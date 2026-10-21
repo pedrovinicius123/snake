@@ -102,7 +102,7 @@ class Snake:
                 )
                 if result is False:
                     continue
-                
+                return deque(dirs)
 
             if nh == target:
                 # Só faz a checagem de cauda se ainda houver espaço e não
