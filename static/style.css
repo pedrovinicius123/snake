@@ -1,0 +1,78 @@
+:root{
+  --bg:#0b0f14; --panel:#121a24; --text:#e6edf3; --muted:#8b949e;
+  --accent:#4ade80; --line:#263041;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body {
+  background: radial-gradient(1200px 600px at 50% -200px, #1a2433, var(--bg));
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  display: flex; justify-content: center;
+  padding: 10px;
+  height: 100vh;
+  height: 100dvh;
+}
+main {
+  display: flex; flex-direction: column; gap: 8px;
+  width: 100%; max-width: 900px;
+  height: 100%; min-height: 0; min-width: 0;
+}
+header {
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: 4px 16px;
+}
+h1 { margin: 0; font-size: 1.15rem; letter-spacing: .5px; }
+.hud { display: flex; gap: 14px; color: var(--muted); font-size: .85rem; }
+.hud b { color: var(--text); }
+.sub { margin: 0; color: var(--muted); font-size: .8rem; }
+
+.controls {
+  display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center;
+  padding: 8px 12px; border-radius: 10px; background: var(--panel);
+  font-size: .85rem;
+}
+.controls label {
+  display: flex; align-items: center; gap: 6px; color: var(--muted);
+}
+input[type="number"] {
+  width: 60px; padding: 4px 6px; border-radius: 6px;
+  border: 1px solid var(--line); background: #0d1520; color: var(--text);
+  font-size: .9rem;
+}
+input[type="range"] { width: 130px; }
+button {
+  background: var(--accent); color: #04120a; border: 0;
+  padding: 6px 14px; border-radius: 6px; font-weight: 600;
+  font-size: .85rem; cursor: pointer;
+}
+button:hover { filter: brightness(1.1); }
+
+.board-area {
+  flex: 1;
+  min-height: 0; min-width: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.canvas-wrap {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0,0,0,.5);
+}
+canvas { display: block; background: #0b1020; }
+
+.overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.65);
+  color: #fff; font-weight: 600;
+  font-size: clamp(0.85rem, 3.5vmin, 1.15rem);
+  text-align: center; padding: 12px;
+}
+.hidden { display: none; }
+
+@media (max-width: 520px) {
+  h1 { font-size: 1rem; }
+  .sub { display: none; }
+  input[type="range"] { width: 90px; }
+}

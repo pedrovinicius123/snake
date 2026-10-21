@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cobrinha automática 🐍</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<main>
+  <header>
+    <h1>🐍 Cobrinha automática</h1>
+    <p class="sub">A IA joga sozinha.</p>
+    <div class="hud">
+      <span>Pontos: <b id="score">0</b></span>
+      <span>Grade: <b id="grid">–</b>×<b id="grid2">–</b></span>
+      <span>Buffer: <b id="buf">0</b></span>
+    </div>
+  </header>
+
+  <div class="controls">
+    <label>Tamanho
+      <input id="size" type="number"
+             min="{{ min_size }}" max="{{ max_size }}" value="{{ default_size }}">
+    </label>
+    <label>Velocidade
+      <input id="speed" type="range" min="0" max="100" value="45">
+      <span id="tpsLabel">30</span> tps
+    </label>
+    <button id="restart">Novo jogo</button>
+  </div>
+
+  <div class="board-area">
+    <div class="canvas-wrap" id="wrap">
+      <canvas id="board"></canvas>
+      <div id="overlay" class="overlay hidden"></div>
+    </div>
+  </div>
+</main>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
