@@ -2,13 +2,16 @@
 
 import random
 import uuid
+import os
 
+from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request, session
-
 from player import Snake, check_hit_self_pos, check_out_of_bounds, void_pos
 
+load_dotenv()
+
 app = Flask(__name__)
-app.secret_key = "snake-auto-dev-key"  # troque em produção
+app.secret_key = os.getenv("SECRET_KEY")  # troque em produção
 GAMES = {}
 
 MIN_SIZE, MAX_SIZE, DEFAULT_SIZE = 5, 50, 15
