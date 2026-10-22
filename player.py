@@ -61,7 +61,7 @@ def adj(head: tuple, pos, size: int):
     return f if f > 0 else False
 
 
-def valid_next_heads(size: int, current_dir, head: tuple, pos):
+def valid_next_heads(current_dir, pos, size: int, head: tuple, target:tuple, ftail:bool=False):
     """
     Apenas enumera direções válidas (sem reversão).
     O filtro de colisão é feito no `_bfs_target`, que monta `new_state`
@@ -70,7 +70,15 @@ def valid_next_heads(size: int, current_dir, head: tuple, pos):
     """
     for d in valid_d(current_dir):
         dx, dy = Direction.movement(d)
-        yield (head[0] + dx, head[1] + dy), d
+        next_head = (head[0] + dx, head[1] + dy)
+        next_pos = pos.copy()
+
+        if next_head != target and ftail:
+            next_pos.pop()
+
+        next_pos = [next_head] + pos
+        if not (check_hit_self_pos(pos, next_head) or check_out_of_bounds(size, next_head)):
+            yield next_head, d
 
 
 class Snake:
@@ -86,12 +94,12 @@ class Snake:
     # ---- FIX PRINCIPAL: cabeça é sempre derivada de pos[0] ----
 
     def _bfs_target(self, initial_state, head, target, size,
-                    ftail=False, initial_dir=None):
+                    initial_dir=None, ftail=False):
         visited = set()
-        start_dir = initial_dir if initial_dir is not None else self.direction
+        start_dir = self.direction if initial_dir is None else initial_dir
         queue = deque([(list(initial_state), head, [], start_dir)])
         count = 0
-        tot = 2*size*(size-1)
+        tot = size*(size-1)
 
         while queue:
             state, nh, dirs, last_dir = queue.popleft()
@@ -100,9 +108,8 @@ class Snake:
                     state, nh, state[-1], size,
                     ftail=True, initial_dir=last_dir,
                 )
-                if not result:
-                    continue
-                return deque(dirs)
+                if result is not False:
+                    return deque(dirs)
 
             if nh == target:
                 # Só faz a checagem de cauda se ainda houver espaço e não
@@ -115,22 +122,18 @@ class Snake:
                         state, nh, state[-1], size,
                         ftail=True, initial_dir=eat_dir,
                     )
-                    if not result:
+                    if result is False:
                         continue
                 return deque(dirs)
 
-            for h, d in valid_next_heads(size, last_dir, nh, state):
+            for h, d in valid_next_heads(last_dir, state, size, nh, target, ftail=ftail):
                 # Cresce só quando realmente come (não no ftail).
                 if h == target and not ftail:
                     new_state = [h] + state
                 else:
                     new_state = [h] + state[:-1]
 
-                # Valida o filho ANTES de marcar como visitado.
-                if check_hit_self_pos(new_state, h) or check_out_of_bounds(size, h):
-                    continue
-
-                key = (nh, h, new_state[-1])
+                key = (nh, h, tuple(new_state[-2:]))
                 if key in visited:
                     continue
                 visited.add(key)
@@ -138,6 +141,17 @@ class Snake:
                 queue.append((new_state, h, dirs + [d], d))
 
         return False
+
+    def approx_tail(self, tail:tuple):
+        min_d = None
+        min_dist = float("inf")
+
+        for h, d in valid_next_heads(self.direction, list(self.pos), self.size, self.head, tail, ftail=True):
+            if math.dist(h, target) < min_dist:
+                min_dist = math.dist(h, target)
+                min_d = d
+
+        return min_d
 
     def move(self, fruit: tuple = None, grow=False):
         #print(self.pos)
@@ -156,7 +170,7 @@ class Snake:
             if self.__path:
                 self.direction = self.__path.popleft()
             elif self.__path is False:
-                self.direction = self.approx_tail(self.direction, tail)
+                self.direction = self.approx_tail(tail)
 
         dx, dy = Direction.movement(self.direction)
         hx, hy = self.head

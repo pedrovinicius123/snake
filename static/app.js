@@ -15,28 +15,28 @@
   const overlay = $('overlay');
   const restart = $('restart');
 
-  // Estado do jogo / buffer local
-  let state      = null;
-  let buffer     = [];
-  let block      = 1;
-  let tps        = 30;
-  let running    = false;
-  let fetching   = false;
-  let gen        = 0;
-  let overlayUp  = false;
-  let lastTime   = 0;
-  let accumulator = 0;   // em "ticks"
+  let state       = null;
+  let buffer      = [];
+  let block       = 1;
+  let tps         = 30;
+  let running     = false;
+  let fetching    = false;
+  let serverDone  = false;   // servidor não vai mandar mais frames
+  let deathQueued = false;   // overlay de morte já agendado
+  let gen         = 0;
+  let lastTime    = 0;
+  let accumulator = 0;
 
-  const LOW_WATER = 200;          // pede mais quando buffer < isto
-  const MAX_REQUEST = 2000;       // limite por lote
+  const LOW_WATER    = 200;
+  const MAX_REQUEST  = 2000;
+  const OVERLAY_DELAY = 400;   // ms visíveis do frame de colisão
+  const RESTART_DELAY = 1500;  // ms de overlay antes do auto-restart
 
   // ------------------------------------------------------------- utilidades
   function sliderToTps(v) {
-    // 0..100 → 1..2000 tps (escala exponencial)
     const t = Math.pow(10, 0.03301 * v);
     return Math.max(1, Math.round(t));
   }
-
   function requestedBatch() {
     return Math.max(500, Math.min(MAX_REQUEST, Math.round(tps * 1.5)));
   }
@@ -44,7 +44,7 @@
   // ------------------------------------------------------------- dimensiona
   function fitCanvas() {
     if (!state) return;
-    const rect = area.getBoundingClientRect();
+    const rect  = area.getBoundingClientRect();
     const avail = Math.max(40, Math.min(rect.width, rect.height) - 4);
     block = Math.max(2, Math.floor(avail / state.size));
 
@@ -100,29 +100,34 @@
   }
 
   // ---------------------------------------------------------------- overlay
-  function showOverlay() {
-    if (overlayUp) return;
-    overlayUp = true;
-    overlay.textContent = state && state.win
-      ? '🎉 Vitória!'
-      : `💀 Fim de jogo — ${state ? state.score : 0} ponto${state && state.score === 1 ? '' : 's'}`;
-    overlay.classList.remove('hidden');
-
+  // Só é chamada DEPOIS que o frame com gameover=true foi renderizado.
+  function scheduleOverlay() {
+    if (deathQueued) return;
+    deathQueued = true;
     const myGen = gen;
+
+    // Pequeno atraso: o usuário vê o frame da colisão antes do overlay cobrir.
     setTimeout(() => {
-      if (myGen === gen) newGame(state ? state.size : parseInt(sizeIn.value, 10) || 15);
-    }, 1500);
+      if (myGen !== gen) return;
+      overlay.textContent = state && state.win
+        ? '🎉 Vitória!'
+        : `💀 Fim de jogo — ${state ? state.score : 0} ponto${state && state.score === 1 ? '' : 's'}`;
+      overlay.classList.remove('hidden');
+
+      setTimeout(() => {
+        if (myGen === gen) newGame(state ? state.size : parseInt(sizeIn.value, 10) || 15);
+      }, RESTART_DELAY);
+    }, OVERLAY_DELAY);
   }
 
   function showMessage(msg) {
-    overlayUp = true;
     overlay.textContent = msg;
     overlay.classList.remove('hidden');
   }
 
   // ------------------------------------------------------------------ HTTP
   async function fetchBatch() {
-    if (fetching || !running) return;
+    if (fetching || !running || serverDone) return;
     fetching = true;
     const myGen = gen;
     try {
@@ -134,19 +139,11 @@
       const data = await res.json();
       if (myGen !== gen) return;
 
-      if (data.frames.length === 0) {
-        if (data.gameover) {
-          running = false;
-          if (state) {
-            state.gameover = true;
-            state.win = data.win;
-            render();
-          }
-          showOverlay();
-        }
-        return;
-      }
-      buffer.push(...data.frames);
+      if (data.frames.length > 0) buffer.push(...data.frames);
+
+      // Servidor já detectou colisão: o frame de morte está em `buffer`.
+      // Apenas pare de pedir — NUNCA mostre o overlay aqui.
+      if (data.gameover) serverDone = true;
     } catch (e) {
       console.error('fetchBatch:', e);
     } finally {
@@ -158,16 +155,17 @@
   async function newGame(size) {
     gen++;
     const myGen = gen;
-    running = false;
-    fetching = false;
-    buffer = [];
+    running     = false;
+    fetching    = false;
+    serverDone  = false;
+    deathQueued = false;
+    buffer      = [];
     accumulator = 0;
-    lastTime = 0;
-    state = null;
-    overlayUp = false;
+    lastTime    = 0;
+    state       = null;
     overlay.classList.add('hidden');
     scoreEl.textContent = '0';
-    bufEl.textContent = '0';
+    bufEl.textContent   = '0';
 
     try {
       const res = await fetch('/api/new', {
@@ -178,13 +176,15 @@
       const data = await res.json();
       if (myGen !== gen) return;
 
-      state = data.initial;
-      buffer = data.priming.slice();
-      running = true;
+      state       = data.initial;
+      buffer      = data.priming.slice();
+      serverDone  = !!data.gameover;   // evita 1 fetch desnecessário
+      running     = true;
+
       fitCanvas();
       render();
       bufEl.textContent = buffer.length;
-    } catch (e) {
+    } catch {
       if (myGen !== gen) return;
       showMessage('Erro ao conectar.');
     }
@@ -199,8 +199,6 @@
     const dt = Math.min(0.2, (now - lastTime) / 1000);
     lastTime = now;
     accumulator += dt * tps;
-
-    // Segurança: nunca deixa acumular eternamente (ex.: rede lenta)
     if (accumulator > 1e6) accumulator = 1e6;
 
     let advanced = false;
@@ -208,7 +206,12 @@
       state = buffer.shift();
       accumulator -= 1;
       advanced = true;
-      if (state.gameover) { running = false; break; }
+
+      // Frame de colisão consumido: renderiza ele mesmo antes de parar.
+      if (state.gameover) {
+        running = false;
+        break;
+      }
     }
 
     if (advanced) {
@@ -216,9 +219,19 @@
       bufEl.textContent = buffer.length;
     }
 
-    if (!running) { showOverlay(); return; }
+    if (!running) {
+      scheduleOverlay();   // overlay só depois do render do frame de colisão
+      return;
+    }
 
-    if (!fetching && buffer.length < LOW_WATER) fetchBatch();
+    // Caso defensivo: servidor esgotado e buffer vazio sem flag gameover
+    if (serverDone && buffer.length === 0) {
+      running = false;
+      scheduleOverlay();
+      return;
+    }
+
+    if (!fetching && !serverDone && buffer.length < LOW_WATER) fetchBatch();
   }
 
   // ------------------------------------------------------------- eventos
@@ -235,7 +248,6 @@
   window.addEventListener('resize', fitCanvas);
   if (window.ResizeObserver) new ResizeObserver(fitCanvas).observe(area);
 
-  // inicialização
   tps = sliderToTps(parseInt(speedIn.value, 10));
   tpsLbl.textContent = tps;
   requestAnimationFrame(animate);
