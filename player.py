@@ -108,7 +108,7 @@ class Snake:
                     state, nh, state[-1], size,
                     ftail=True, initial_dir=last_dir,
                 )
-                if result is not False:
+                if result:
                     return deque(dirs)
 
             if nh == target:
@@ -122,7 +122,7 @@ class Snake:
                         state, nh, state[-1], size,
                         ftail=True, initial_dir=eat_dir,
                     )
-                    if result is False:
+                    if result:
                         continue
                 return deque(dirs)
 
