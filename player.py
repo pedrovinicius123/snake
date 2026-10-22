@@ -133,7 +133,7 @@ class Snake:
                 else:
                     new_state = [h] + state[:-1]
 
-                key = (nh, h, tuple(new_state[-2:]))
+                key = (nh, h, new_state[-1])
                 if key in visited:
                     continue
                 visited.add(key)
@@ -169,8 +169,6 @@ class Snake:
             # 3. Executa o próximo movimento gerado ou usa a aproximação de emergência
             if self.__path:
                 self.direction = self.__path.popleft()
-            elif self.__path is False:
-                self.direction = self.approx_tail(tail)
 
         dx, dy = Direction.movement(self.direction)
         hx, hy = self.head
