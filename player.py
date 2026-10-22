@@ -147,9 +147,11 @@ class Snake:
         min_dist = float("inf")
 
         for h, d in valid_next_heads(self.direction, list(self.pos), self.size, self.head, tail, ftail=True):
-            if math.dist(h, target) < min_dist:
-                min_dist = math.dist(h, target)
+            if math.dist(h,tail) < min_dist:
+                min_dist = math.dist(h, tail)
                 min_d = d
+        if min_d == None:
+            return self.direction
 
         return min_d
 
@@ -169,6 +171,8 @@ class Snake:
             # 3. Executa o próximo movimento gerado ou usa a aproximação de emergência
             if self.__path:
                 self.direction = self.__path.popleft()
+            else:
+                self.direction = self.approx_tail(tail)
 
         dx, dy = Direction.movement(self.direction)
         hx, hy = self.head
