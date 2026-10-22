@@ -99,7 +99,7 @@ class Snake:
         start_dir = self.direction if initial_dir is None else initial_dir
         queue = deque([(list(initial_state), head, [], start_dir)])
         count = 0
-        tot = size*(size-1)
+        tot = 2*size*(size-1)
 
         while queue:
             state, nh, dirs, last_dir = queue.popleft()
