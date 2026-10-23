@@ -71,13 +71,14 @@ def valid_next_heads(current_dir, pos, size: int, head: tuple, target:tuple, fta
     for d in valid_d(current_dir):
         dx, dy = Direction.movement(d)
         next_head = (head[0] + dx, head[1] + dy)
-        next_pos = pos.copy()
+        next_pos = []
 
-        if next_head != target and ftail:
-            next_pos.pop()
+        if next_head == target and not ftail:
+            next_pos = [next_head]+pos
+        else:
+            next_pos = [next_head]+pos[:-1]
 
-        next_pos = [next_head] + pos
-        if not (check_hit_self_pos(pos, next_head) or check_out_of_bounds(size, next_head)):
+        if not (check_hit_self_pos(next_pos, next_head) or check_out_of_bounds(size, next_head)):
             yield next_head, d
 
 
@@ -99,22 +100,17 @@ class Snake:
         start_dir = self.direction if initial_dir is None else initial_dir
         queue = deque([(list(initial_state), head, [], start_dir)])
         count = 0
-        tot = 2*size*(size-1)
+        tot = size*(size-1)
 
         while queue:
             state, nh, dirs, last_dir = queue.popleft()
-            if len(dirs) >= tot:
-                result = self._bfs_target(
-                    state, nh, state[-1], size,
-                    ftail=True, initial_dir=last_dir,
-                )
-                if result:
-                    return deque(dirs)
 
             if nh == target:
                 # Só faz a checagem de cauda se ainda houver espaço e não
                 # for a própria verificação. `size*size > len(state)`
                 # é False quando comer acabou de encher o tabuleiro
+
+                result = []
                 # (vitória) — nesse caso não precisa de checagem.
                 if not ftail and size * size > len(state) > 0:
                     eat_dir = dirs[-1] if dirs else start_dir
@@ -124,7 +120,19 @@ class Snake:
                     )
                     if not result:
                         continue
+                
                 return deque(dirs)
+
+            if len(dirs) >= tot:
+                result = self._bfs_target(
+                    state, nh, state[-1], size,
+                    ftail=True, initial_dir=last_dir,
+                )
+                if not result:
+                   continue
+                
+                return deque(dirs)
+
 
             for h, d in valid_next_heads(last_dir, state, size, nh, target, ftail=ftail):
                 # Cresce só quando realmente come (não no ftail).
@@ -136,8 +144,8 @@ class Snake:
                 key = (nh, h, new_state[-1])
                 if key in visited:
                     continue
-                visited.add(key)
 
+                visited.add(key)
                 queue.append((new_state, h, dirs + [d], d))
 
         return False
