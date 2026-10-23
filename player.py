@@ -14,10 +14,9 @@ def check_out_of_bounds(size: int, head: tuple):
     return not (0 <= head[0] < size and 0 <= head[1] < size)
 
 
-def check_hit_self_pos(pos, head: tuple):
-    it = iter(pos)
-    next(it, None)
-    return head in it
+def check_hit_self_pos(pos:list, head: tuple):
+    p = pos[1:]
+    return head in p
 
 
 class Direction:
@@ -100,7 +99,7 @@ class Snake:
         start_dir = self.direction if initial_dir is None else initial_dir
         queue = deque([(list(initial_state), head, [], start_dir)])
         count = 0
-        tot = size*(size-1)
+        tot = 2*size*(size-1)
 
         while queue:
             state, nh, dirs, last_dir = queue.popleft()
@@ -120,7 +119,7 @@ class Snake:
                     )
                     if not result:
                         continue
-                
+                    
                 return deque(dirs)
 
             if len(dirs) >= tot:
