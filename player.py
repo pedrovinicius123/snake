@@ -103,7 +103,6 @@ class Snake:
         tot = 2*size*(size-1)
 
         paths = []
-        fruit_paths = []
 
         while queue:
             state, nh, dirs, last_dir = queue.popleft()
@@ -132,6 +131,13 @@ class Snake:
                     )
                     if result:
                         paths.append(dirs)
+
+            elif len(dirs) >= tot and not ftail:
+                result = self._bfs_target(
+                    state, nh, state[-1], size, ftail=True, initial_dir=dirs[-1]
+                )
+                if result:
+                    paths.append(dirs)
 
             for h, d in valid_next_heads(last_dir, state, size, nh, target, ftail=ftail):
                 # Cresce só quando realmente come (não no ftail).
