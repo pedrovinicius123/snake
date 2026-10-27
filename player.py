@@ -149,7 +149,7 @@ class Snake:
                 queue.append((new_state, h, dirs + [d], d))
     
         
-        return False if not paths else deque(max(paths, key=lambda x:len(x))[0])
+        return False if not paths else deque(max(paths, key=lambda x:len(x)))
         
 
     def approx_tail(self, tail:tuple):
