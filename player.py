@@ -96,10 +96,14 @@ class Snake:
     def _bfs_target(self, initial_state, head, target, size,
                     initial_dir=None, ftail=False):
         visited = set()
+        tails = set()
         start_dir = self.direction if initial_dir is None else initial_dir
         queue = deque([(list(initial_state), head, [], start_dir)])
         count = 0
         tot = 2*size*(size-1)
+
+        paths = []
+        fruit_paths = []
 
         while queue:
             state, nh, dirs, last_dir = queue.popleft()
@@ -119,19 +123,15 @@ class Snake:
                     )
                     if not result:
                         continue
-                    
                 return deque(dirs)
 
-            if len(dirs) >= tot:
-                result = self._bfs_target(
-                    state, nh, state[-1], size,
-                    ftail=True, initial_dir=last_dir,
-                )
-                if not result:
-                   continue
-                
-                return deque(dirs)
-
+            if nh in tails and size*size > len(state) > 0 and not ftail:
+                if not check_hit_self_pos(state, nh) and not check_out_of_bounds(size, nh):
+                    result = self._bfs_target(
+                        state, nh, state[-1], size, ftail=True, initial_dir=dirs[-1]
+                    )
+                    if result:
+                        paths.append(dirs)
 
             for h, d in valid_next_heads(last_dir, state, size, nh, target, ftail=ftail):
                 # Cresce só quando realmente come (não no ftail).
@@ -145,9 +145,12 @@ class Snake:
                     continue
 
                 visited.add(key)
+                tails.add(new_state[-1])
                 queue.append((new_state, h, dirs + [d], d))
-
-        return False
+    
+        
+        return False if not paths else deque(max(paths, key=lambda x:len(x))[0])
+        
 
     def approx_tail(self, tail:tuple):
         min_d = None
